@@ -34,7 +34,7 @@ retries your 429s seven times (no water needed) and leaves you a green graph by 
 ## install
 
 ```bash
-git clone https://github.com/<your-username>/camelcase && cd camelcase
+git clone https://github.com/rgkdegen/camelcase && cd camelcase
 pip install -e .
 humpy --version
 ```

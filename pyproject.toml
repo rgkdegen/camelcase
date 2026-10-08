@@ -20,7 +20,7 @@ dev = ["pytest>=7", "ruff>=0.5"]
 humpy = "camelcase.cli:main"
 
 [project.urls]
-Homepage = "https://x.com/rgk_degen"
+Homepage = "https://github.com/rgkdegen/camelcase"
 
 [tool.setuptools.packages.find]
 where = ["src"]
