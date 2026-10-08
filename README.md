@@ -18,7 +18,7 @@ coming soon
 
 <h3 align="center">A camel who walks your repo at night.</h3>
 
-<h3 align="center"><a href="https://rgkdegen.github.io/camelcase/play/">▶ Play HUMP RUN</a>, the camel runner game</h3>
+<h3 align="center"><a href="https://camelcase-20lq.onrender.com/">▶ Play HUMP RUN</a>, the camel runner game</h3>
 
 camelcase is a small command line tool and GitHub Action with a camel for a face.
 Point him at a repository and he treks every file, digs up the TODOs buried in the sand,

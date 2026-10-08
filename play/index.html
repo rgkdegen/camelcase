@@ -416,7 +416,7 @@ function die(cause) {
     $('oScore').textContent = sc.toLocaleString('en-US'); $('oBest').textContent = best.toLocaleString('en-US');
     $('oCoins').textContent = S.coins; $('oDist').textContent = Math.floor(S.dist);
     $('newbest').hidden = !isNew;
-    const txt = `I scored ${sc.toLocaleString('en-US')} in HUMP RUN 🐫\n${S.coins} coins, ${Math.floor(S.dist)}m on my humps, then I ${cause}.\n\ncan you beat it? @rgk_degen`;
+    const txt = `I scored ${sc.toLocaleString('en-US')} in HUMP RUN 🐫\n${S.coins} coins, ${Math.floor(S.dist)}m on my humps, then I ${cause}.\n\ncan you beat it? 🐫 https://camelcase-20lq.onrender.com\n@rgk_degen`;
     $('shareBtn').href = 'https://x.com/intent/post?text=' + encodeURIComponent(txt);
     $('over').hidden = false;
   }, 900);
