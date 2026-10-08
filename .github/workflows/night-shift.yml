@@ -1,0 +1,24 @@
+name: Night shift
+
+on:
+  schedule:
+    - cron: "12 3 * * *" # he clocks in at 03:12 UTC
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trek:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: humpy treks his own stable
+        uses: ./
+        with:
+          fail-under: "90"
+      - name: Tests
+        run: python -m unittest discover -s tests -v

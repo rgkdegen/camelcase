@@ -4,33 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "camelcase-humpy"
-version = "0.1.0"
-description = "humpy — a night-shift camel for your repo. scans files, spits on open issues, camelCases everything."
+version = "0.2.0"
+description = "A camel who walks your repo at night: buried TODOs, dropped keys, snake_case, missing basics and open issues."
 readme = "README.md"
-license = { text = "MIT" }
-authors = [{ name = "rgk_degen" }]
 requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "rgkdegen" }]
+keywords = ["github", "cli", "todo", "secrets", "camelcase", "code-quality", "github-actions"]
 dependencies = []
-keywords = ["camel", "camelcase", "cli", "retry", "repo-scanner", "meme"]
-
-[project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.5"]
-
-[project.scripts]
-humpy = "camelcase.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/rgkdegen/camelcase"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.scripts]
+humpy = "camelcase.cli:main"
+
+[tool.setuptools]
+packages = ["camelcase"]
 
 [tool.ruff]
 line-length = 140
-target-version = "py39"
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]

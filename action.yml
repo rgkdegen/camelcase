@@ -1,0 +1,26 @@
+name: camelcase
+description: A camel walks your repo at night for buried TODOs, dropped keys, snake_case and missing basics, then leaves a report in the job summary.
+author: rgkdegen
+branding:
+  icon: sun
+  color: orange
+inputs:
+  path:
+    description: Folder to trek
+    default: "."
+  fail-under:
+    description: Fail the job when the good camel score is below this number (0 never fails)
+    default: "0"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Trek
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        TREK_PATH: ${{ inputs.path }}
+        FAIL_UNDER: ${{ inputs.fail-under }}
+      run: python -m camelcase --color always trek "$TREK_PATH" --md "$GITHUB_STEP_SUMMARY" --fail-under "$FAIL_UNDER"
