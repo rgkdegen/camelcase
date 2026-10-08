@@ -1,0 +1,11 @@
+# One-click deploy of HUMP RUN as a static site on Render (render.com)
+services:
+  - type: web
+    name: hump-run
+    runtime: static
+    buildCommand: echo "no build needed"
+    staticPublishPath: ./play
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=300
