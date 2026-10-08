@@ -1,0 +1,17 @@
+name: Bug in the desert
+description: something broke. humpy will spit on it.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: what happened
+      placeholder: "the crawler got lost in the desert again"
+    validations:
+      required: true
+  - type: textarea
+    id: trace
+    attributes:
+      label: stack trace
+      description: humpy will chew it. twice.
+      render: shell

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "camelcase-humpy"
+version = "0.1.0"
+description = "humpy — a night-shift camel for your repo. scans files, spits on open issues, camelCases everything."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "rgk_degen" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["camel", "camelcase", "cli", "retry", "repo-scanner", "meme"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.scripts]
+humpy = "camelcase.cli:main"
+
+[project.urls]
+Homepage = "https://x.com/rgk_degen"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py39"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
