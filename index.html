@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta property="og:title" content="HUMP RUN">
+<meta property="og:description" content="Run an upside-down camel on his humps. Jump snake_case, dodge 429 vultures, grab $CAMELCASE coins.">
+<meta property="og:image" content="https://raw.githubusercontent.com/rgkdegen/camelcase/main/assets/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<title>HUMP RUN</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@500;700;800&display=swap">
+<style>
+/* Layout: full-bleed game stage, HUD pinned top, touch controls pinned bottom, overlays centred. One committed look: desert dusk. */
+:root {
+  --night: #1a1030;      /* deep dusk, page ground */
+  --dusk: #3b1d4a;       /* overlay panels */
+  --sand: #f2c27b;       /* sand / primary text on dark */
+  --sun: #ff8a3d;        /* accent */
+  --coin: #ffd23f;       /* coins, score */
+  --cactus: #4fd27a;     /* good / green */
+  --danger: #ff4d6d;     /* hits */
+  --ink: #fff6e6;        /* bright text */
+  --dim: #c9a8c9;        /* secondary text */
+  --display: 'Silkscreen', 'Courier New', monospace;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; background: var(--night); color: var(--ink); overflow: hidden; }
+body { font-family: var(--mono); -webkit-user-select: none; user-select: none; touch-action: none; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { width: 100% !important; height: 100% !important; display: block; image-rendering: pixelated; }
+
+#hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0; display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.hud-l, .hud-r { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tag { background: rgba(26,16,48,.72); border: 2px solid rgba(242,194,123,.35); border-radius: 6px; padding: 5px 10px; font-weight: 700; font-size: 14px; letter-spacing: .5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag b { color: var(--coin); font-weight: 800; }
+.tag.score { font-family: var(--display); font-size: 22px; color: var(--coin); border-color: var(--coin); padding: 4px 12px; }
+.tag.mult { color: var(--cactus); border-color: var(--cactus); }
+.tag.mult[hidden] { display: none; }
+#mute { pointer-events: auto; cursor: pointer; color: var(--sand); font-family: var(--mono); }
+#mute:focus-visible, .btn:focus-visible, .pad:focus-visible { outline: 3px solid var(--coin); outline-offset: 2px; }
+
+#pads { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 16px); display: none; justify-content: space-between; pointer-events: none; }
+.pad { pointer-events: auto; width: 96px; height: 96px; border-radius: 50%; border: 3px solid rgba(255,246,230,.5); background: rgba(26,16,48,.55); color: var(--ink); font-family: var(--display); font-size: 16px; display: grid; place-items: center; }
+.pad:active { background: rgba(255,138,61,.45); }
+@media (pointer: coarse) { #pads { display: flex; } }
+
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at center, rgba(26,16,48,.35), rgba(26,16,48,.82)); }
+.panel { width: min(560px, 100%); background: var(--dusk); border: 3px solid var(--sand); border-radius: 14px; padding: 26px 24px 22px; box-shadow: 8px 10px 0 rgba(0,0,0,.35); text-align: center; display: grid; gap: 14px; }
+.logo { font-family: var(--display); font-weight: 700; font-size: clamp(44px, 11vw, 76px); line-height: .95; color: var(--coin); text-shadow: 4px 4px 0 var(--sun), 8px 8px 0 rgba(0,0,0,.35); letter-spacing: 1px; margin: 0; text-wrap: balance; }
+.sub { color: var(--sand); font-size: 14px; line-height: 1.5; margin: 0; }
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; text-align: left; font-size: 13px; color: var(--dim); }
+.keys div { background: rgba(0,0,0,.2); border-radius: 8px; padding: 8px 10px; }
+.keys b { color: var(--ink); font-weight: 800; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; font-size: 12.5px; text-align: left; color: var(--dim); }
+.legend span b { color: var(--ink); }
+.btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn { font-family: var(--display); font-size: 18px; padding: 12px 22px; border-radius: 9px; border: 3px solid var(--ink); background: var(--sun); color: #2a0f00; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 4px 5px 0 rgba(0,0,0,.35); }
+.btn.alt { background: transparent; color: var(--ink); }
+.btn:active { transform: translate(2px,3px); box-shadow: 2px 2px 0 rgba(0,0,0,.35); }
+.dead-title { font-family: var(--display); font-size: clamp(34px, 9vw, 54px); color: var(--danger); margin: 0; text-shadow: 3px 3px 0 rgba(0,0,0,.4); }
+.cause { color: var(--sand); margin: 0; font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stats div { background: rgba(0,0,0,.22); border-radius: 8px; padding: 10px 6px; font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+.stats b { display: block; font-family: var(--display); font-size: 22px; color: var(--coin); margin-top: 4px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.newbest { color: var(--cactus); font-family: var(--display); font-size: 16px; margin: 0; }
+.foot { font-size: 11.5px; color: var(--dim); margin: 0; }
+.foot a { color: var(--sand); }
+@media (max-width: 420px) { .stats { grid-template-columns: repeat(2, 1fr); } .panel { padding: 20px 16px 18px; } }
+
+#pops { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.pop { position: absolute; font-family: var(--display); font-size: 18px; color: var(--coin); text-shadow: 2px 2px 0 rgba(0,0,0,.5); transform: translate(-50%, -50%); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="hud">
+  <div class="hud-l">
+    <div class="tag score" id="score">0</div>
+    <div class="tag mult" id="mult" hidden>x2</div>
+  </div>
+  <div class="hud-r">
+    <div class="tag">◎ <b id="coins">0</b></div>
+    <div class="tag"><span id="dist">0</span> m</div>
+    <div class="tag">BEST <b id="best">0</b></div>
+    <button class="tag" id="mute" type="button" aria-label="Toggle sound">SOUND ON</button>
+  </div>
+</div>
+<div id="pads"><button class="pad" id="padDuck" type="button" aria-label="Pancake slide">DUCK</button><button class="pad" id="padJump" type="button" aria-label="Jump">JUMP</button></div>
+<div id="pops"></div>
+
+<div class="overlay" id="title">
+  <div class="panel">
+    <h1 class="logo">HUMP<br>RUN</h1>
+    <p class="sub">An upside-down camel. Four legs in the air. Zero water breaks.<br>Run on your humps, grab coins, don't get pancaked.</p>
+    <div class="keys">
+      <div><b>SPACE / ↑ / TAP</b><br>jump · press again in the air to double jump</div>
+      <div><b>↓ / SWIPE DOWN</b><br>pancake slide under flying stuff · fast-fall in the air</div>
+    </div>
+    <div class="legend">
+      <span>🪵 <b>fence</b> jump it</span>
+      <span>🐍 <b>snake_case</b> jump it</span>
+      <span>🌵 <b>cactus</b> double jump</span>
+      <span>🦅 <b>429 vulture</b> slide under</span>
+      <span>◎ <b>$CAMELCASE coin</b> +25</span>
+      <span>💧 <b>water</b> +10 · camels don't need it</span>
+      <span>🎓 <b>grad cap</b> 6s of x2 + magnet</span>
+      <span>⚡ <b>combo</b> grab coins fast for x3, x4, x5</span>
+    </div>
+    <div class="btns"><button class="btn" id="startBtn" type="button">▶ RUN</button></div>
+    <p class="foot">humpy from <a href="https://github.com/rgkdegen/camelcase" target="_blank" rel="noopener">rgkdegen/camelcase</a> · by <a href="https://x.com/rgk_degen" target="_blank" rel="noopener">@rgk_degen</a></p>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="panel">
+    <h2 class="dead-title">PANCAKED</h2>
+    <p class="cause" id="cause">ran into a fence</p>
+    <p class="newbest" id="newbest" hidden>NEW BEST</p>
+    <div class="stats">
+      <div>SCORE<b id="oScore">0</b></div>
+      <div>BEST<b id="oBest">0</b></div>
+      <div>COINS<b id="oCoins">0</b></div>
+      <div>METERS<b id="oDist">0</b></div>
+    </div>
+    <div class="btns">
+      <button class="btn" id="againBtn" type="button">↻ RUN AGAIN</button>
+      <a class="btn alt" id="shareBtn" href="https://x.com/intent/post" target="_blank" rel="noopener">SHARE ON X</a>
+    </div>
+    <p class="foot">space / tap to run again</p>
+  </div>
+</div>
+
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ---------- storage (best score) ---------- */
+const store = {
+  get() { try { return +localStorage.getItem('humprun.best') || 0; } catch { return 0; } },
+  set(v) { try { localStorage.setItem('humprun.best', String(v)); } catch {} },
+};
+
+/* ---------- renderer ---------- */
+const PIX = 2.5;
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(Math.max(160, Math.round(w / PIX)), Math.max(120, Math.round(h / PIX)), false);
+  camera.aspect = w / h;
+  // keep the camel and the next obstacles in frame on tall phones
+  camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 50 : 40;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* sky */
+{ const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#1a1030'); gr.addColorStop(0.45, '#5b2a6e'); gr.addColorStop(0.75, '#e2606b'); gr.addColorStop(1, '#ffb36b');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t; }
+scene.fog = new THREE.Fog(0xe88a6a, 60, 170);
+scene.add(new THREE.HemisphereLight(0xffd9b0, 0x6b3a5a, 1.35));
+const sunL = new THREE.DirectionalLight(0xffc48a, 2.4); sunL.position.set(-20, 18, 14); scene.add(sunL);
+
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
+const SPH = new THREE.SphereGeometry(1, 24, 16);
+const CAPS = (r, l) => new THREE.CapsuleGeometry(r, l, 5, 12);
+function mesh(geo, m, parent, pos, scl) { const o = new THREE.Mesh(geo, m); if (pos) o.position.copy(pos);
+  if (scl !== undefined) (typeof scl === 'number') ? o.scale.setScalar(scl) : o.scale.copy(scl); parent.add(o); return o; }
+let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ground, sun, dunes */
+mesh(new THREE.PlaneGeometry(600, 400), mat(0xe9a868, { roughness: 1 }), scene, v3(60, 0, -100)).rotation.x = -Math.PI / 2;
+mesh(new THREE.PlaneGeometry(600, 3.4), mat(0xd48a52, { roughness: 1 }), scene, v3(60, 0.01, 0)).rotation.x = -Math.PI / 2;
+const sunDisc = mesh(new THREE.CircleGeometry(14, 40), new THREE.MeshBasicMaterial({ color: 0xffd27a, fog: false }), scene, v3(40, 16, -160));
+const duneMs = [0xd88f55, 0xc97b4a, 0xb86a44].map(c => mat(c, { roughness: 1 }));
+const dunes = [];
+for (let i = 0; i < 18; i++) { const layer = i % 3, rx = rand(14, 26), ry = rand(4, 8) - layer;
+  const d = mesh(SPH, duneMs[layer], scene, v3(-60 + i * 12 + rand(0, 8), -ry * 0.3, -40 - layer * 22 - rand(0, 8)), v3(rx, ry, 10));
+  d.userData.par = 0.25 - layer * 0.07; dunes.push(d); }
+const rockG = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 6, 5), mat(0xb5743f, { roughness: 1 }), 220);
+const rocks = []; { const d = new THREE.Object3D();
+  for (let i = 0; i < 220; i++) { rocks.push({ x: rand(-30, 90), z: rand(-12, 6), s: rand(0.5, 1.6) }); }
+  scene.add(rockG); }
+function drawRocks() { const d = new THREE.Object3D();
+  rocks.forEach((r, i) => { d.position.set(r.x, 0.03, r.z); d.scale.set(r.s, r.s * 0.5, r.s); d.updateMatrix(); rockG.setMatrixAt(i, d.matrix); });
+  rockG.instanceMatrix.needsUpdate = true; }
+
+/* ---------- camel ---------- */
+const furM = mat(0xd9a15a, { roughness: 0.62 }), furL = mat(0xf3cf92), darkM = mat(0x5a3a22, { roughness: 0.7 });
+const hoofM = mat(0x3d2a1e, { roughness: 0.5 }), whiteM = mat(0xffffff, { roughness: 0.15 }), blackM = mat(0x111111, { roughness: 0.2 });
+const camel = new THREE.Group(); scene.add(camel);
+const rig = new THREE.Group(); camel.add(rig);
+const P = {};
+mesh(SPH, furM, rig, v3(0, 1.05, 0), v3(1.25, 0.62, 0.72)); mesh(SPH, furL, rig, v3(0, 1.37, 0), v3(0.98, 0.32, 0.56));
+P.humps = [];
+for (const hx of [0.52, -0.55]) { const hg = new THREE.Group(); hg.position.set(hx, 0.98, 0); rig.add(hg); mesh(SPH, furM, hg, v3(0, -0.5, 0), v3(0.47, 0.52, 0.47)); P.humps.push(hg); }
+P.legs = [];
+for (const [lx, lz, ph] of [[0.72, 0.36, 0], [0.72, -0.36, Math.PI], [-0.7, 0.36, Math.PI * 0.5], [-0.7, -0.36, Math.PI * 1.5]]) {
+  const hip = new THREE.Group(); hip.position.set(lx, 1.4, lz); rig.add(hip);
+  mesh(CAPS(0.13, 0.5), furM, hip, v3(0, 0.3, 0));
+  const knee = new THREE.Group(); knee.position.y = 0.62; hip.add(knee);
+  mesh(SPH, furL, knee, v3(0, 0, 0), 0.145); mesh(CAPS(0.1, 0.48), furM, knee, v3(0, 0.3, 0));
+  mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.15, 12), hoofM, knee, v3(0, 0.62, 0));
+  hip.userData = { ph, knee, front: lx > 0, sideZ: Math.sign(lz) }; P.legs.push(hip);
+}
+P.tail = new THREE.Group(); P.tail.position.set(-1.18, 1.18, 0); rig.add(P.tail);
+mesh(CAPS(0.05, 0.42), furM, P.tail, v3(0, 0.26, 0)); mesh(SPH, darkM, P.tail, v3(0, 0.58, 0), v3(0.09, 0.15, 0.09));
+P.neck = new THREE.Group(); P.neck.position.set(1.02, 1.02, 0); rig.add(P.neck);
+mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([v3(0, 0, 0), v3(0.45, 0.22, 0), v3(0.64, 0.82, 0), v3(0.7, 1.42, 0)]), 24, 0.21, 12, false), furM, P.neck);
+mesh(SPH, furM, P.neck, v3(0, 0, 0), 0.21); mesh(SPH, furM, P.neck, v3(0.7, 1.42, 0), 0.21);
+P.head = new THREE.Group(); P.head.position.set(0.72, 1.55, 0); P.neck.add(P.head);
+mesh(SPH, furM, P.head, v3(0, 0, 0), v3(0.37, 0.33, 0.32)); mesh(SPH, furL, P.head, v3(0.34, -0.09, 0), v3(0.35, 0.23, 0.26));
+mesh(SPH, darkM, P.head, v3(-0.04, 0.31, 0), v3(0.2, 0.1, 0.15));
+P.eyes = [];
+for (const s of [1, -1]) { const eg = new THREE.Group(); eg.position.set(0.12, 0.15, 0.22 * s); P.head.add(eg);
+  mesh(SPH, whiteM, eg, v3(0, 0, 0), 0.135); const pu = mesh(SPH, blackM, eg, v3(0.06, 0, 0.075 * s), 0.072); P.eyes.push({ eg, pu, s }); }
+P.tongue = new THREE.Group(); P.tongue.position.set(0.5, -0.24, 0.12); P.head.add(P.tongue);
+mesh(CAPS(0.055, 0.22), mat(0xff7f9a), P.tongue, v3(0, -0.15, 0)).scale.set(1, 1, 0.6);
+// graduation cap (power-up)
+const cap = new THREE.Group(); cap.position.set(-0.02, 0.36, 0); cap.rotation.z = 0.12; P.head.add(cap);
+mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.13, 16), mat(0x16181d), cap, v3(0, 0, 0));
+mesh(new THREE.BoxGeometry(0.62, 0.04, 0.62), mat(0x16181d), cap, v3(0, 0.08, 0)).rotation.y = Math.PI / 4;
+mesh(SPH, mat(0xffc23a, { metalness: 0.3, roughness: 0.3 }), cap, v3(0, 0.11, 0), 0.035);
+cap.visible = false;
+camel.rotation.y = -0.18;
+const stars = []; const starM = mat(0xffd93b, { emissive: 0xffc400, emissiveIntensity: 0.7 });
+for (let i = 0; i < 3; i++) { const s = mesh(new THREE.OctahedronGeometry(0.2), starM, scene); s.visible = false; stars.push(s); }
+
+/* ---------- obstacles & pickups ---------- */
+const woodM = mat(0xa8713f), woodL = mat(0xd5a066), cactM = mat(0x3fa85c, { roughness: 0.7 }), snakeM = mat(0x58c33a, { roughness: 0.45 });
+function textSprite(txt, color, bg) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g = c.getContext('2d');
+  g.fillStyle = bg; g.beginPath(); g.roundRect(4, 4, 248, 88, 18); g.fill();
+  g.fillStyle = color; g.font = '800 58px "JetBrains Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 128, 52);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, fog: false })); s.scale.set(1.6, 0.6, 1); return s;
+}
+const KINDS = {
+  fence: { w: 0.4, h: 1.35, y0: 0, cause: 'ran into a fence', build() {
+    const g = new THREE.Group();
+    for (const z of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.22, 1.5, 0.22), woodM, g, v3(0, 0.75, z));
+    for (const y of [0.55, 1.15]) mesh(new THREE.BoxGeometry(0.12, 0.18, 2.1), woodL, g, v3(0, y, 0));
+    return g; } },
+  snake: { w: 1.5, h: 0.5, y0: 0, cause: 'stepped on a snake_case', build() {
+    const g = new THREE.Group(); const pts = [];
+    for (let i = 0; i <= 12; i++) pts.push(v3(-0.75 + i * 0.125, 0.18, Math.sin(i * 0.9) * 0.25));
+    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.13, 8), snakeM, g);
+    const head = mesh(SPH, snakeM, g, v3(-0.82, 0.24, 0), v3(0.2, 0.15, 0.17));
+    for (const s of [1, -1]) mesh(SPH, whiteM, head, v3(-0.4, 0.5, 0.5 * s), 0.35);
+    const lab = textSprite('snake_case', '#0b1d10', '#9be15d'); lab.scale.set(1.5, 0.42, 1); lab.position.set(0, 0.95, 0); g.add(lab);
+    return g; } },
+  cactus: { w: 0.7, h: 2.7, y0: 0, cause: 'hugged a cactus', build() {
+    const g = new THREE.Group();
+    mesh(CAPS(0.32, 2.0), cactM, g, v3(0, 1.3, 0));
+    const a1 = mesh(CAPS(0.17, 0.55), cactM, g, v3(0.42, 1.35, 0)); const a2 = mesh(CAPS(0.17, 0.4), cactM, g, v3(-0.42, 1.65, 0));
+    mesh(CAPS(0.17, 0.3), cactM, g, v3(0.55, 1.05, 0)).rotation.z = Math.PI / 2; mesh(CAPS(0.17, 0.3), cactM, g, v3(-0.55, 1.4, 0)).rotation.z = Math.PI / 2;
+    return g; } },
+  vulture: { w: 1.6, h: 1.0, y0: 1.25, cause: 'rate-limited by a 429 vulture', build() {
+    const g = new THREE.Group();
+    const body = mesh(SPH, mat(0x3a2a3a), g, v3(0, 1.75, 0), v3(0.55, 0.3, 0.32));
+    mesh(SPH, mat(0xe8a0a0), g, v3(-0.6, 1.85, 0), 0.18);
+    mesh(new THREE.ConeGeometry(0.07, 0.25, 8), mat(0xffc23a), g, v3(-0.8, 1.82, 0)).rotation.z = Math.PI / 2;
+    const wl = mesh(new THREE.BoxGeometry(0.6, 0.05, 1.3), mat(0x2a1e2a), g, v3(0.05, 1.85, 0.8));
+    const wr = mesh(new THREE.BoxGeometry(0.6, 0.05, 1.3), mat(0x2a1e2a), g, v3(0.05, 1.85, -0.8));
+    g.userData.wings = [wl, wr];
+    const lab = textSprite('429', '#fff', '#d6334f'); lab.position.set(0, 2.6, 0); lab.scale.set(1.1, 0.42, 1); g.add(lab);
+    return g; } },
+};
+const coinTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#ffd23f'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#b8860b'; g.font = '800 44px "JetBrains Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('$', 32, 35);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const coinGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.08, 20);
+const coinMats = [mat(0xffc23a, { metalness: 0.35, roughness: 0.3 }), new THREE.MeshStandardMaterial({ map: coinTex, metalness: 0.2, roughness: 0.35 }), new THREE.MeshStandardMaterial({ map: coinTex, metalness: 0.2, roughness: 0.35 })];
+function makePickup(kind) {
+  const g = new THREE.Group();
+  if (kind === 'coin') { const c = new THREE.Mesh(coinGeo, coinMats); c.rotation.x = Math.PI / 2; g.add(c); }
+  else if (kind === 'water') { const m = mat(0x5ec8ff, { roughness: 0.15, transparent: true, opacity: 0.9 }); mesh(SPH, m, g, v3(0, -0.05, 0), 0.24); mesh(new THREE.ConeGeometry(0.2, 0.36, 16), m, g, v3(0, 0.22, 0)); }
+  else { mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.16, 16), mat(0x16181d), g, v3(0, 0, 0)); mesh(new THREE.BoxGeometry(0.7, 0.05, 0.7), mat(0x16181d), g, v3(0, 0.1, 0)).rotation.y = Math.PI / 4;
+    mesh(SPH, mat(0xffc23a, { emissive: 0x7a5200, emissiveIntensity: 0.6 }), g, v3(0, 0.15, 0), 0.06); }
+  scene.add(g); return g;
+}
+
+/* ---------- game state ---------- */
+const G = 34, JUMP_V = 12.6, DJUMP_V = 11.4;
+let S;
+function reset() {
+  for (const o of S?.obs || []) scene.remove(o.mesh);
+  for (const p of S?.picks || []) scene.remove(p.mesh);
+  S = { mode: S?.mode || 'title', t: 0, speed: 12, dist: 0, nextAt: 22, y: 0, vy: 0, ground: true, jumps: 0, slide: 0, land: 0, flip: 0,
+    obs: [], picks: [], score: 0, coins: 0, combo: 0, comboT: 0, grad: 0, deadT: 0, cause: '', best: store.get() };
+  seed = 7; rocks.forEach(r => r.x = rand(-30, 90));
+}
+reset();
+
+function spawn() {
+  const d = Math.min(1, S.t / 90), x = 46;
+  const roll = Math.random();
+  let kind;
+  if (S.t < 6) kind = roll < 0.6 ? 'fence' : 'snake';
+  else if (roll < 0.28) kind = 'fence';
+  else if (roll < 0.5) kind = 'snake';
+  else if (roll < 0.72) kind = d > 0.12 ? 'cactus' : 'fence';
+  else kind = d > 0.2 ? 'vulture' : 'snake';
+  const K = KINDS[kind], m = K.build(); m.position.x = x; scene.add(m);
+  S.obs.push({ kind, x, mesh: m, w: K.w, h: K.h, y0: K.y0 });
+  // coins shaped by the obstacle
+  if (kind === 'vulture') for (let i = -2; i <= 2; i++) addPick('coin', x + i * 1.1, 0.6);
+  else if (kind === 'cactus') for (let i = -2; i <= 2; i++) addPick('coin', x + i * 1.0, 3.4 + 0.35 * (2 - Math.abs(i)));
+  else for (let i = -2; i <= 2; i++) addPick('coin', x + i * 1.0, (K.h + 0.9) + 0.45 * (2 - Math.abs(i)));
+  // a second obstacle close behind once the run is going
+  if (d > 0.35 && Math.random() < 0.25 && kind !== 'cactus') {
+    const k2 = Math.random() < 0.5 ? 'snake' : 'fence', K2 = KINDS[k2], m2 = K2.build(), x2 = x + 7.5 + S.speed * 0.12;
+    m2.position.x = x2; scene.add(m2); S.obs.push({ kind: k2, x: x2, mesh: m2, w: K2.w, h: K2.h, y0: K2.y0 });
+  }
+  if (Math.random() < 0.35) addPick('water', x + rand(10, 14), rand(0.6, 2.4));
+  if (Math.random() < 0.07 && S.grad <= 0) addPick('grad', x + 12, 2.2);
+  const gap = rand(17, 27) * (0.85 + 0.35 * Math.sqrt(S.speed / 12));
+  S.nextAt = S.dist + gap;
+}
+function addPick(kind, x, y) { const m = makePickup(kind); m.position.set(x, y, 0); S.picks.push({ kind, x, y, mesh: m }); }
+
+/* ---------- audio ---------- */
+let AC = null, muted = false;
+function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch { AC = null; } } if (AC?.state === 'suspended') AC.resume(); return AC; }
+function tone(f0, f1, dur, type = 'square', vol = 0.12, delay = 0) {
+  const a = ac(); if (!a || muted) return; const t = a.currentTime + delay;
+  const o = a.createOscillator(), g = a.createGain(); o.type = type;
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol = 0.2, delay = 0) {
+  const a = ac(); if (!a || muted) return; const t = a.currentTime + delay;
+  const b = a.createBuffer(1, Math.ceil(a.sampleRate * dur), a.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+  const s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+  s.buffer = b; g.gain.value = vol; s.connect(f).connect(g).connect(a.destination); s.start(t);
+}
+const SFX = {
+  jump: () => tone(220, 520, 0.18, 'square', 0.08),
+  djump: () => { tone(330, 880, 0.16, 'square', 0.07); tone(660, 990, 0.1, 'triangle', 0.05, 0.06); },
+  coin: (n) => { const f = 880 * Math.pow(2, Math.min(n, 12) / 24); tone(f, f, 0.06, 'square', 0.05); tone(f * 1.5, f * 1.5, 0.09, 'square', 0.05, 0.05); },
+  water: () => tone(600, 1200, 0.12, 'sine', 0.1),
+  grad: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.14, 'square', 0.06, i * 0.07)),
+  slide: () => noise(0.25, 0.12),
+  splat: () => { noise(0.35, 0.35); tone(160, 50, 0.4, 'sine', 0.3); [466, 440, 415, 392].forEach((f, i) => tone(f / 2, f / 2 * (i === 3 ? 0.97 : 1), i === 3 ? 0.7 : 0.26, 'sawtooth', 0.05, 0.45 + i * 0.28)); },
+  step: () => tone(140, 90, 0.05, 'sine', 0.05),
+};
+const muteBtn = document.getElementById('mute');
+muteBtn.addEventListener('click', e => { e.stopPropagation(); muted = !muted; muteBtn.textContent = muted ? 'SOUND OFF' : 'SOUND ON'; muteBtn.blur(); });
+
+/* ---------- input ---------- */
+const $ = id => document.getElementById(id);
+function start() { ac(); reset(); S.mode = 'run'; $('title').hidden = true; $('over').hidden = true; }
+function jump() {
+  if (S.mode !== 'run') { if (S.mode === 'title' || (S.mode === 'dead' && S.deadT > 0.6)) start(); return; }
+  if (S.ground) { S.vy = JUMP_V; S.ground = false; S.jumps = 1; S.slide = 0; SFX.jump(); }
+  else if (S.jumps < 2) { S.vy = DJUMP_V; S.jumps = 2; S.flip = 1; SFX.djump(); }
+}
+function duck() {
+  if (S.mode !== 'run') return;
+  if (S.ground) { if (S.slide <= 0) SFX.slide(); S.slide = 0.7; }
+  else { S.vy = Math.min(S.vy, -22); S.slideQueued = true; }
+}
+addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); if (!e.repeat) jump(); }
+  if (['ArrowDown', 'KeyS'].includes(e.code)) { e.preventDefault(); duck(); }
+  if (e.code === 'Enter' && S.mode !== 'run') jump();
+});
+let touch0 = null;
+stage.addEventListener('pointerdown', e => { touch0 = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+stage.addEventListener('pointerup', e => {
+  if (!touch0) return; const dy = e.clientY - touch0.y; touch0 = null;
+  if (dy > 40) duck(); else jump();
+});
+$('padJump').addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+$('padDuck').addEventListener('pointerdown', e => { e.preventDefault(); duck(); });
+$('startBtn').addEventListener('click', start);
+$('againBtn').addEventListener('click', start);
+$('title').addEventListener('pointerup', e => { if (e.target === $('title')) start(); });
+
+/* ---------- popups ---------- */
+const pops = $('pops');
+function popup(text, wx, wy, color) {
+  const p = v3(wx, wy, 0).project(camera); const el = document.createElement('div'); el.className = 'pop'; el.textContent = text;
+  if (color) el.style.color = color;
+  el.style.left = ((p.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - p.y) / 2 * innerHeight) + 'px';
+  pops.appendChild(el);
+  el.animate([{ transform: 'translate(-50%,-50%) scale(.6)', opacity: 1 }, { transform: 'translate(-50%,-160%) scale(1.1)', opacity: 0 }], { duration: 700, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+
+/* ---------- update ---------- */
+function die(cause) {
+  S.mode = 'dead'; S.deadT = 0; S.cause = cause; SFX.splat();
+  const sc = Math.floor(S.score), best = Math.max(S.best, sc), isNew = sc > S.best && sc > 0;
+  if (isNew) store.set(best); S.best = best;
+  setTimeout(() => {
+    $('cause').textContent = cause + '.';
+    $('oScore').textContent = sc.toLocaleString('en-US'); $('oBest').textContent = best.toLocaleString('en-US');
+    $('oCoins').textContent = S.coins; $('oDist').textContent = Math.floor(S.dist);
+    $('newbest').hidden = !isNew;
+    const txt = `I scored ${sc.toLocaleString('en-US')} in HUMP RUN 🐫\n${S.coins} coins, ${Math.floor(S.dist)}m on my humps, then I ${cause}.\n\ncan you beat it? @rgk_degen`;
+    $('shareBtn').href = 'https://x.com/intent/post?text=' + encodeURIComponent(txt);
+    $('over').hidden = false;
+  }, 900);
+}
+
+function update(dt) {
+  S.t += dt;
+  if (S.mode === 'run') {
+    S.speed = Math.min(31, 12 + S.t * 0.22);
+    const dx = S.speed * dt; S.dist += dx;
+    S.score += dx * (S.grad > 0 ? 2 : 1);
+    if (S.dist >= S.nextAt) spawn();
+    // physics
+    if (!S.ground) {
+      S.vy -= G * dt; S.y += S.vy * dt;
+      if (S.y <= 0) { S.y = 0; S.vy = 0; S.ground = true; S.jumps = 0; S.land = 0.15; S.flip = 0; SFX.step(); if (S.slideQueued) { S.slide = 0.6; S.slideQueued = false; } }
+    }
+    S.slide = Math.max(0, S.slide - dt); S.land = Math.max(0, S.land - dt);
+    S.grad = Math.max(0, S.grad - dt); S.comboT = Math.max(0, S.comboT - dt); if (S.comboT === 0) S.combo = 0;
+    if (S.flip > 0) S.flip = Math.max(0, S.flip - dt * 2.2);
+    // move world
+    for (const o of S.obs) { o.x -= dx; o.mesh.position.x = o.x; if (o.kind === 'vulture') { const f = Math.sin(S.t * 14) * 0.5; o.mesh.userData.wings[0].rotation.x = f; o.mesh.userData.wings[1].rotation.x = -f; o.mesh.position.y = Math.sin(S.t * 3 + o.x) * 0.08; } }
+    for (const p of S.picks) { p.x -= dx; if (S.grad > 0 && p.kind !== 'grad' && Math.abs(p.x) < 9) { p.x += (0 - p.x) * Math.min(1, dt * 6); p.y += (S.y + 1.2 - p.y) * Math.min(1, dt * 6); } p.mesh.position.set(p.x, p.y + Math.sin(S.t * 4 + p.x) * 0.08, 0); p.mesh.rotation.y += dt * 4; }
+    S.obs = S.obs.filter(o => { if (o.x < -20) { scene.remove(o.mesh); return false; } return true; });
+    // collisions (forgiving boxes)
+    const top = S.y + (S.slide > 0 ? 0.62 : 1.85), bot = S.y + 0.05;
+    for (const o of S.obs) {
+      if (Math.abs(o.x) < (o.w / 2 + 0.85) * 0.86 && bot < o.y0 + o.h * 0.92 && top > o.y0 + 0.08) { die(KINDS[o.kind].cause); break; }
+    }
+    S.picks = S.picks.filter(p => {
+      if (p.x < -20) { scene.remove(p.mesh); return false; }
+      if (Math.abs(p.x) < 1.15 && p.y > S.y - 0.3 && p.y < top + 1.0) {
+        scene.remove(p.mesh);
+        if (p.kind === 'coin') { S.combo++; S.comboT = 1.4; S.coins++; const m = mult(); S.score += 25 * m; SFX.coin(S.combo); if (S.combo % 5 === 0) popup(`COMBO x${m}`, p.x + 1, p.y + 1, '#4fd27a'); }
+        else if (p.kind === 'water') { S.score += 10; SFX.water(); popup('+10 💧', p.x, p.y + 0.6, '#9fe0ff'); }
+        else { S.grad = 6; SFX.grad(); popup('GRADUATED x2', p.x + 1, p.y + 1, '#ffd23f'); }
+        return false;
+      }
+      return true;
+    });
+    for (const r of rocks) { r.x -= dx; if (r.x < -30) r.x += 120; }
+    for (const d of dunes) { d.position.x -= dx * d.userData.par; if (d.position.x < -70) d.position.x += 216; }
+  } else if (S.mode === 'dead') {
+    S.deadT += dt;
+  }
+}
+const mult = () => Math.min(5, 1 + Math.floor(S.combo / 5)) * (S.grad > 0 ? 2 : 1);
+
+/* ---------- pose ---------- */
+const clamp01 = x => Math.max(0, Math.min(1, x));
+function poseCamel() {
+  const t = S.t, F = 2.4 + S.speed * 0.06;
+  let y = 0, pitch = 0, sq = [1, 1], sx = 1, sy = 1, legAmp = 0.75, neck = 0.1 * Math.sin(t * 12), splay = 0, dizzy = 0;
+  if (S.mode === 'title') { const ph = Math.PI * 1.6 * t, b = Math.abs(Math.sin(ph)); y = 0.35 * b; const c = Math.pow(1 - b, 3); sq[Math.round(1.6 * t) % 2] = 1 - 0.3 * c; }
+  else if (S.mode === 'run') {
+    if (S.ground && S.slide <= 0) { const ph = Math.PI * F * t, b = Math.abs(Math.sin(ph)); y = 0.42 * b; pitch = 0.12 * Math.sin(ph); const c = Math.pow(1 - b, 3); sq[Math.round(F * t) % 2] = 1 - 0.3 * c;
+      if (S.land > 0) sq = sq.map(q => Math.min(q, 1 - 2 * S.land)); }
+    if (!S.ground) { pitch = 0.04 * S.vy * 0.5; legAmp = 1.2; neck = -0.25; sx = 1 - 0.05 * Math.sign(S.vy); sy = 1 + 0.08 * Math.sign(S.vy); }
+    if (S.slide > 0) { sy = 0.42; sx = 1.3; splay = 1; legAmp = 0; neck = -0.12; }
+  } else { const d = S.deadT, e = 1 - Math.pow(1 - clamp01(d / 0.1), 2); sy = 1 - 0.78 * e + (d > 0.1 ? 0.08 * Math.exp(-(d - 0.1) * 3) * Math.sin((d - 0.1) * 26) : 0); sx = 1 + 0.35 * e; splay = e; legAmp = 0; dizzy = clamp01((d - 0.25) / 0.4); y = S.y * Math.max(0, 1 - d * 6); }
+  camel.position.set(0, (S.mode === 'run' ? S.y : 0) + (S.mode === 'dead' ? y : 0), 0);
+  camel.scale.set(sx, sy, S.mode === 'dead' ? 1 + 0.4 * splay : 1);
+  rig.position.y = (1.02 * Math.min(sq[0], sq[1]) - 0.98) + (S.mode === 'dead' ? 0 : y);
+  rig.rotation.z = pitch + (S.flip > 0 ? (1 - S.flip) * Math.PI * 2 : 0);
+  P.humps.forEach((h, i) => h.scale.set(1 + (1 - sq[i]) * 0.6, sq[i], 1 + (1 - sq[i]) * 0.6));
+  const ls = t * (10 + S.speed * 0.5);
+  for (const hip of P.legs) {
+    const { ph, knee, front, sideZ } = hip.userData;
+    let rz = legAmp * Math.sin(ls + ph), kz = 0.5 + 0.55 * Math.sin(ls + ph + 1.2), rx = 0.15 * sideZ * legAmp * Math.cos(ls * 0.7 + ph);
+    if (splay > 0) { rz = (front ? -1.25 : 1.25); kz = 0.2; rx = -0.55 * sideZ; }
+    hip.rotation.set(rx, 0, rz); knee.rotation.z = kz;
+  }
+  P.tail.rotation.z = 0.9 + 0.35 * Math.sin(t * 11);
+  P.neck.rotation.z = neck; P.head.rotation.z = -neck * 0.5;
+  P.head.scale.set(1, splay ? Math.min(2.4, 0.85 / sy) : 1, 1);
+  P.tongue.rotation.x = 0.5 * Math.sin(t * 19); P.tongue.rotation.z = 0.4 + 0.3 * Math.sin(t * 13);
+  for (const { pu, s } of P.eyes) { const a = S.deadT * 9 * s; pu.position.set(0.06 + dizzy * 0.035 * Math.cos(a), dizzy * 0.035 * Math.sin(a), 0.075 * s); }
+  cap.visible = S.grad > 0 && S.mode === 'run';
+  camel.updateMatrixWorld(true);
+  const hp = new THREE.Vector3(); P.head.getWorldPosition(hp);
+  stars.forEach((st, i) => { st.visible = dizzy > 0.01; const a = S.deadT * 4 + i * 2.09;
+    st.position.set(hp.x + Math.cos(a) * 0.7, Math.max(hp.y, 0.4) + 0.6, hp.z + Math.sin(a) * 0.7); st.rotation.set(a, a, 0); st.scale.setScalar(dizzy); });
+}
+
+/* ---------- HUD ---------- */
+let hudLast = '';
+function hud() {
+  const m = mult(), s = Math.floor(S.score).toLocaleString('en-US'), key = s + S.coins + m + Math.floor(S.dist) + S.best;
+  if (key === hudLast) return; hudLast = key;
+  $('score').textContent = s; $('coins').textContent = S.coins; $('dist').textContent = Math.floor(S.dist);
+  $('best').textContent = Math.max(S.best, S.mode === 'run' ? Math.floor(S.score) : 0).toLocaleString('en-US');
+  $('mult').hidden = m <= 1; $('mult').textContent = 'x' + m;
+}
+
+/* ---------- loop ---------- */
+let last = performance.now(), shake = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!document.hidden) {
+    update(dt); poseCamel(); hud(); drawRocks();
+    const sh = S.mode === 'dead' ? 0.3 * Math.exp(-S.deadT * 6) : 0;
+    const cy = 4.6 + S.y * (S.mode === 'run' ? 0.35 : 0);
+    const lx = camera.aspect < 0.8 ? 3.2 : camera.aspect < 1.2 ? 5.5 : 8.5, cz = camera.aspect < 0.8 ? 17 : 21;
+    camera.position.set(lx - 2 + sh * Math.sin(now * 0.05), cy + sh * Math.sin(now * 0.04), cz);
+    camera.lookAt(lx, 2.3 + S.y * 0.3, 0);
+    sunDisc.position.x = camera.position.x + 30;
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+}
+resize();
+document.fonts?.ready.then(() => {});
+requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>
